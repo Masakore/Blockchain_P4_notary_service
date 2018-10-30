@@ -17,9 +17,11 @@
   },
   "homepage": "https://github.com/Masakore/Blockchain_P4_notary_service#readme",
   "dependencies": {
+    "bitcoinjs-message": "^2.0.0",
     "body-parser": "^1.18.3",
     "crypto-js": "^3.1.9-1",
     "express": "^4.16.4",
-    "level": "^4.0.0"
+    "level": "^4.0.0",
+    "secp256k1": "^3.5.2"
   }
 }
