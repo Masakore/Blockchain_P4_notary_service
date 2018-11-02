@@ -70,34 +70,37 @@ app.post('/requestValidation', (req, res) => {
   }
 
   let address = req.body.address
-  let requestTimeStamp = new Date().getTime()
+  let currentTimeStamp = new Date().getTime()
 
   if (existingRequests.length > 0) {
-    let result = extractAddressFromExistingRequests(address)
-    if (result !== null) {
-      let currentTimeStamp = result['requestTimeStamp']
-      let remainingTime = requestTimeStamp - currentTimeStamp
+    let existingRequestForTheAddress = extractExistingRequestByAddress(address)
+    if (existingRequestForTheAddress !== null) {
+      let previousTimeStamp = existingRequestForTheAddress['requestTimeStamp']
+      let elapsed = (currentTimeStamp - previousTimeStamp) / 1000
 
-      if (0 < remainingTime && remainingTime <300000) {
-        let updatedTimeStamp = currentTimeStamp - remainingTime
-        result['requestTimeStamp'] = updatedTimeStamp
+      let remainingValidationWindow = existingRequestForTheAddress['validationWindow']
+      let updatedValidationWindow = remainingValidationWindow - elapsed;
 
-        return res.status(200).json(result)
+      if (updatedValidationWindow > 0) {
+        existingRequestForTheAddress['validationWindow'] = updatedValidationWindow;
+        existingRequests.push(existingRequestForTheAddress)
+
+        return res.status(200).json(existingRequestForTheAddress)
       }
     }
   }
 
-  let message = address + ":" + requestTimeStamp + ":" + "starRegistry"
+  let message = address + ":" + currentTimeStamp + ":" + "starRegistry"
 
-  let validation_request = {
-    "address": address,
-    "requestTimeStamp": requestTimeStamp.toString(),
-    "message": message,
-    "validationWindow": DEFAULT_VALIDATION_WINDOW
+  let new_validation_request = {
+    address: address,
+    requestTimeStamp: currentTimeStamp,
+    message: message,
+    validationWindow: DEFAULT_VALIDATION_WINDOW
   }
-  existingRequests.push(validation_request)
+  existingRequests.push(new_validation_request)
 
-  return res.status(200).json(validation_request)
+  return res.status(200).json(new_validation_request)
 })
 
 app.post('/message-signature/validate', (req, res) => {
@@ -114,33 +117,60 @@ app.post('/message-signature/validate', (req, res) => {
   }
 
   let address = req.body.address
-  // Todo logic to get existing request from existingRequests variable
-  let requestTimeStamp = []
-  let message = address + ":" + requestTimeStamp + ":" + "starRegistry"
-  let remaingingValidationWindow = 300
-  let isMessageVerified = bitcoinMessage.verify(message, message, signature)
+  let signature = req.body.signature
+
+  let existingRequestForTheAddress = getExistingRequestByAddress(address)
+  if (existingRequestForTheAddress === null) {
+    return res.status(422).json({ error: "Request not found"})
+  }
+
+  let currentTimeStamp = new Date().getTime()
+  let previousTimeStamp = existingRequestForTheAddress['requestTimeStamp']
+  let elapsed = (currentTimeStamp - previousTimeStamp) / 1000
+
+  let remainingValidationWindow = existingRequestForTheAddress['validationWindow']
+  let updatedValidationWindow = remainingValidationWindow - elapsed;
+
+  if (updatedValidationWindow <= 0) {
+    return res.status(422).json({ error: "Request expired"})
+  }
+
+  existingRequestForTheAddress['validationWindow'] = updatedValidationWindow;
+
+  let message = existingRequestForTheAddress['message']
+  let isMessageVerified = bitcoinMessage.verify(message, address, signature)
 
   let validation_request = {
-    "registerStar": remaingingValidationWindow > 0? true : false,
-    "status": {
-      "address": address,
-      "requestTimeStamp": requestTimeStamp.toString(),
-      "message": message,
-      "validationWindow": DEFAULT_VALIDATION_WINDOW,
-      "messageSignature": isMessageVerified? "valid" : "invalid"
+    registerStar: true,
+    status: {
+      address: address,
+      requestTimeStamp: previousTimeStamp,
+      message: message,
+      validationWindow: updatedValidationWindow,
+      messageSignature: isMessageVerified? "valid" : "invalid"
     }
   }
 
+  return res.status(200).json(validation_request)
 })
 
-function extractAddressFromExistingRequests(address) {
-  for (let json in existingRequests) {
-    if (json['address'] === address) {
-      existingRequests.splice(i, 1)
-      return json
+function extractExistingRequestByAddress(address) {
+  for (const [index, request] of existingRequests.entries()) {
+    if (request['address'] === address) {
+      existingRequests.splice(index, 1)
+      return request
     }
-    return null
   }
+  return null
+}
+
+function getExistingRequestByAddress(address) {
+  for (const [index, request] of existingRequests.entries()) {
+    if (request['address'] === address) {
+      return request
+    }
+  }
+  return null
 }
 
 app.listen(port, () => console.log(`Private blockchain app listening on port ${port}!`))
