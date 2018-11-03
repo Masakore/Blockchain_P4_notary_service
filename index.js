@@ -21,37 +21,62 @@ var existingRequests = []
 const DEFAULT_VALIDATION_WINDOW = 300
 
 
-app.get('/block/:blockId', (req, res) => {
-  let blockId = parseInt(req.params.blockId)
+app.get('/stars/address/:address', (req, res) => {
+  blockChain.getBlockWithAddress(req.params.address).then((data) => {
+    res.status(200).json(data)
+  }).catch((err) => {
+    return res.status(422).json({ error: "Block Not Found with the address"})
+  });
+})
+
+app.get('/stars/hash/:hash', (req, res) => {
+  blockChain.getBlockWithHash(req.params.hash).then((data) => {
+    res.status(200).json(data)
+  }).catch((err) => {
+    return res.status(422).json({ error: "Block Not Found with the hash"})
+  });
+})
+
+app.get('/block/:height', (req, res) => {
+  let blockId = parseInt(req.params.height)
   if (isNaN(blockId)) {
-    return res.status(422).json({ error: "Block Id must be numeric number"})
+    return res.status(422).json({ error: "Block height must be numeric number"})
   }
 
-  blockChain.getBlock(req.params.blockId).then((data) => {
-    res.status(200).json(JSON.parse(data))
-    // res.send(data)
+  blockChain.getBlock(req.params.height).then((data) => {
+    res.status(200).json(data)
   }).catch((err) => {
-    return res.status(422).json({ error: "Block Id Not Found"})
+    return res.status(422).json({ error: "Block Not Found with the height"})
   });
 })
 
 app.post('/block', (req, res) => {
-  if (Object.keys(req.body).length === 0) {
-    return res.status(422).json({ error: "Please set http request body"})
+  if (Object.keys(req.body).length < 2) {
+    return res.status(422).json({ error: "Please set address and start data in http request body"})
   }
 
-  if (!req.body.body) {
-    return res.status(422).json({ error: "Please set data in http body"})
+  if (!req.body.address) {
+    return res.status(422).json({ error: "Please set address in http body"})
   }
 
-  let block = new Block(req.body.body)
+  if (!req.body.star) {
+    return res.status(422).json({ error: "Please set star data in http body"})
+  }
+
+  if (!req.body.star.dec || !req.body.star.ra || !req.body.star.story) {
+    return res.status(422).json({ error: "Please set right ascension, declination, story in http body"})
+  }
+
+  if (req.body.star.story.length > 250) {
+    return res.status(422).json({ error: "Story is required to be 250 words or less"})
+  }
+
+  let block = new Block(req.body)
   blockChain.addBlock(block).then((data) => {
     blockChain.getBlock(data)
-      .then((block) => {
-          res.status(200).json(JSON.parse(block))
-          // res.send(JSON.parse(block))
-        }
-      ).catch((err) => {
+      .then((result) => {
+          res.status(200).json(result)
+      }).catch((err) => {
         return res.status(422).json({ error: err })
       })
     }

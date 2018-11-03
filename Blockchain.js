@@ -47,6 +47,26 @@ function getLevelDBData(key) {
 	});
 }
 
+function encodeToHex(string) {
+	let result = "";
+	for (let i=0; i < string.length; i++) {
+		hex = string.charCodeAt(i).toString(16);
+		result += ("000"+hex).slice(-4);
+	}
+
+	return result;
+}
+
+function decodeHexToString(string) {
+	let result = "";
+	let hexes = string.match(/.{1,4}/g) || [];
+	for (let i=0; i < hexes.length; i++) {
+		result += String.fromCharCode(parseInt(hexes[i], 16));
+	}
+
+	return result;
+}
+
 /* ===== Blockchain Class ==========================
 |  Class with a constructor for new blockchain 		|
 |  ================================================*/
@@ -55,11 +75,7 @@ module.exports = class Blockchain{
   constructor(){
 	  this.chain = [];
 		loadDataFromLevelDB().then((data) => {
-			if(data.length === 0){
-	      this.addBlock(new Block("First block in the chain - Genesis block"));
-			} else {
-	      this.chain = data;
-			}
+	    this.chain = data;
 		}).catch((error) => {
 			console.error(error);
 		});
@@ -70,20 +86,16 @@ module.exports = class Blockchain{
 		return new Promise((resolve, reject) => {
 			loadDataFromLevelDB().then((data) => {
 		    this.chain = data;
-		    // Block height
 		    newBlock.height = this.chain.length;
-		    // UTC timestamp
+				newBlock.body.star.story = encodeToHex(newBlock.body.star.story);
 		    newBlock.time = new Date().getTime().toString().slice(0,-3);
-		    // previous block hash
+
 		    if(this.chain.length>0){
-					// Due to data structure, need to parse Block data here
 					let blockInfo = JSON.parse(this.chain[this.chain.length-1].value);
 		      newBlock.previousBlockHash = blockInfo.hash;
 		    }
-		    // Block hash with SHA256 using newBlock and converting to a string
-		    newBlock.hash = SHA256(JSON.stringify(newBlock)).toString();
 
-		    // Adding block object to chain
+		    newBlock.hash = SHA256(JSON.stringify(newBlock)).toString();
 		  	this.chain.push(newBlock);
 
 				addLevelDBData(this.chain.length - 1, JSON.stringify(newBlock)).then((data) => {
@@ -110,7 +122,45 @@ module.exports = class Blockchain{
   getBlock(blockHeight){
 		return new Promise((resolve, reject) => {
 			getLevelDBData(blockHeight).then((data) => {
-				resolve(data);
+				let parsedData = JSON.parse(data);
+				parsedData.body.star.storyDecoded = decodeHexToString(parsedData.body.star.story);
+				resolve(parsedData);
+			}).catch((err) => {
+				reject(err);
+			});
+		});
+  }
+
+  getBlockWithAddress(address){
+		return new Promise((resolve, reject) => {
+			let result = [];
+			loadDataFromLevelDB().then((data) => {
+				for (let [index, value] of data.entries()) {
+					let block = JSON.parse(value.value)
+					if (block.body.address === address) {
+				    block.body.star.storyDecoded = decodeHexToString(block.body.star.story);
+						result.push(block);
+					}
+				}
+				resolve(result);
+			}).catch((err) => {
+				reject(err);
+			});
+		});
+  }
+
+  getBlockWithHash(hash){
+		return new Promise((resolve, reject) => {
+			let result = [];
+			loadDataFromLevelDB().then((data) => {
+				for (let [index, value] of data.entries()) {
+					let block = JSON.parse(value.value)
+					if (block.hash === hash) {
+				    block.body.star.storyDecoded = decodeHexToString(block.body.star.story);
+						result.push(block);
+					}
+				}
+				resolve(result);
 			}).catch((err) => {
 				reject(err);
 			});
