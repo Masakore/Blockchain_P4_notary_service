@@ -18,6 +18,7 @@ const bitcoin = require('bitcoinjs-lib')
 const bitcoinMessage = require('bitcoinjs-message')
 
 var existingRequests = []
+var validatedRequests = []
 const DEFAULT_VALIDATION_WINDOW = 300
 
 
@@ -29,6 +30,13 @@ app.get('/stars/address/:address', (req, res) => {
   });
 })
 
+// Hi here's my comments to the following feedback from review.
+// According to the official express docs(https://expressjs.com/en/guide/routing.html), seems '/' before pram should be no problem.
+// Can you tell me why we need to remove the '/'?
+// =============HERE's feedback from review=====================
+// The request endpoint URL is wrong.
+// You have it as http://localhost:8000/stars/hash/:[HASH] andl
+// it should be http://localhost:8000/stars/hash:[HASH], the problem is / before :[HASH]
 app.get('/stars/hash/:hash', (req, res) => {
   blockChain.getBlockWithHash(req.params.hash).then((data) => {
     res.status(200).json(data)
@@ -71,11 +79,18 @@ app.post('/block', (req, res) => {
     return res.status(422).json({ error: "Story is required to be 250 words or less"})
   }
 
+  if (validatedRequests.length === 0 || getValidatedRequestByAddress(req.body.address) === null) {
+    return res.status(422).json({ error: "Your request must be validated by calling '/message-signature/validate API!'"})
+  }
+
   let block = new Block(req.body)
   blockChain.addBlock(block).then((data) => {
     blockChain.getBlock(data)
       .then((result) => {
-          res.status(200).json(result)
+        extractExistingRequestByAddress(req.body.address)
+        extractValidatedRequestByAddress(req.body.address)
+
+        res.status(200).json(result)
       }).catch((err) => {
         return res.status(422).json({ error: err })
       })
@@ -165,6 +180,10 @@ app.post('/message-signature/validate', (req, res) => {
   let message = existingRequestForTheAddress['message']
   let isMessageVerified = bitcoinMessage.verify(message, address, signature)
 
+  if (isMessageVerified === false) {
+    return res.status(422).json({ error: "Wrong signature"})
+  }
+
   let validation_request = {
     registerStar: true,
     status: {
@@ -172,9 +191,11 @@ app.post('/message-signature/validate', (req, res) => {
       requestTimeStamp: previousTimeStamp,
       message: message,
       validationWindow: updatedValidationWindow,
-      messageSignature: isMessageVerified? "valid" : "invalid"
+      messageSignature: "valid"
     }
   }
+
+  validatedRequests.push(validation_request)
 
   return res.status(200).json(validation_request)
 })
@@ -192,6 +213,25 @@ function extractExistingRequestByAddress(address) {
 function getExistingRequestByAddress(address) {
   for (const [index, request] of existingRequests.entries()) {
     if (request['address'] === address) {
+      return request
+    }
+  }
+  return null
+}
+
+function getValidatedRequestByAddress(address) {
+  for (const [index, request] of validatedRequests.entries()) {
+    if (request.status.address === address) {
+      return request
+    }
+  }
+  return null
+}
+
+function extractValidatedRequestByAddress(address) {
+  for (const [index, request] of validatedRequests.entries()) {
+    if (request.status.address === address) {
+      validatedRequests.splice(index, 1)
       return request
     }
   }
