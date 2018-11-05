@@ -30,13 +30,6 @@ app.get('/stars/address/:address', (req, res) => {
   });
 })
 
-// Hi here's my comments to the following feedback from review.
-// According to the official express docs(https://expressjs.com/en/guide/routing.html), seems '/' before pram should be no problem.
-// Can you tell me why we need to remove the '/'?
-// =============HERE's feedback from review=====================
-// The request endpoint URL is wrong.
-// You have it as http://localhost:8000/stars/hash/:[HASH] andl
-// it should be http://localhost:8000/stars/hash:[HASH], the problem is / before :[HASH]
 app.get('/stars/hash/:hash', (req, res) => {
   blockChain.getBlockWithHash(req.params.hash).then((data) => {
     res.status(200).json(data)
