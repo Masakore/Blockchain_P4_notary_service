@@ -75,7 +75,19 @@ module.exports = class Blockchain{
   constructor(){
 	  this.chain = [];
 		loadDataFromLevelDB().then((data) => {
-	    this.chain = data;
+			if(data.length === 0){
+				let genesisStar = {
+													  address: "20181105",
+										        star: {
+										                "ra": "16h 29m 1.0s",
+										                "dec": "-26° 29' 24.9",
+										                "story": "First block in the chain - Genesis block"
+										              }
+				                  }
+	      this.addBlock(new Block(genesisStar));
+			} else {
+	      this.chain = data;
+			}
 		}).catch((error) => {
 			console.error(error);
 		});
