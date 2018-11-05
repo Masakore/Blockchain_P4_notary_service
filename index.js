@@ -72,6 +72,10 @@ app.post('/block', (req, res) => {
     return res.status(422).json({ error: "Story is required to be 250 words or less"})
   }
 
+  if (!isASCII(req.body.star.story)) {
+    return res.status(422).json({ error: "Story must be in ASCII code"})
+  }
+
   if (validatedRequests.length === 0 || getValidatedRequestByAddress(req.body.address) === null) {
     return res.status(422).json({ error: "Your request must be validated by calling '/message-signature/validate API!'"})
   }
@@ -229,6 +233,10 @@ function extractValidatedRequestByAddress(address) {
     }
   }
   return null
+}
+
+function isASCII(str) {
+    return /^[\x00-\x7F]*$/.test(str);
 }
 
 app.listen(port, () => console.log(`Private blockchain app listening on port ${port}!`))
