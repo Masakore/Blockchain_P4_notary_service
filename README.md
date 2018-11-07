@@ -7,15 +7,15 @@ This app runs on Express.js
 2. Run command -> $node index.js
 
 ## API
-* [<code><b>Get <hostname>/block:height</b></code>](#get_by_height)
-* [<code><b>Get <hostname>/stars/address:address</b></code>](#get_by_address)
-* [<code><b>Get <hostname>/stars/hash:hash</b></code>](#get_by_hash)
+* [<code><b>Get <hostname>/block/:height</b></code>](#get_by_height)
+* [<code><b>Get <hostname>/stars/address/:address</b></code>](#get_by_address)
+* [<code><b>Get <hostname>/stars/hash/:hash</b></code>](#get_by_hash)
 * [<code><b>Post <hostname>/block/</b></code>](#post_block)
 * [<code><b>Post <hostname>/requestValidation/</b></code>](#post_request_validation)
 * [<code><b>Post <hostname>/message-signature/validate</b></code>](#post_signature_validation)
 
 <a name="get_height"></a>
-### `GET <hostname>/block:height`
+### `GET <hostname>/block/:height`
 
 Call this endpoint with block height and will return a result in JSON format like below.
 
@@ -40,7 +40,7 @@ Sample result:
 ```
 
 <a name="get_by_address"></a>
-### `GET <hostname>/stars/address:address`
+### `GET <hostname>/stars/address/:address`
 
 Call this endpoint with your wallet address and will return a result in JSON format like below.
 
@@ -82,7 +82,7 @@ Sample result:
 ```
 
 <a name="get_by_hash"></a>
-### `GET <hostname>/stars/hash:hash`
+### `GET <hostname>/stars/hash/:hash`
 
 Call this endpoint with block hash and will return a result in JSON format like below.
 
